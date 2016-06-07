@@ -10,29 +10,29 @@ import org.maxgamer.maxbans.banmanager.Mute;
 import org.maxgamer.maxbans.banmanager.TempMute;
 import org.maxgamer.maxbans.util.Util;
 
-import com.dthielke.herochat.ChannelChatEvent;
-import com.dthielke.herochat.Chatter.Result;
+import com.dthielke.api.ChatResult;
+import com.dthielke.api.event.ChannelChatEvent;
 
 /**
- * 
+ *
  * @author Netherfoam
  *
  */
 public class HeroChatListener implements Listener{
 	private MaxBans plugin;
-	
+
 	public HeroChatListener(MaxBans plugin){
 		this.plugin = plugin;
 	}
-	
+
 	@EventHandler(priority = EventPriority.NORMAL)
 	public void onHeroChat(ChannelChatEvent e){
-		Player p = e.getSender().getPlayer();
-        
+		Player p = e.getChatter().getPlayer();
+
         Mute mute = plugin.getBanManager().getMute(p.getName());
         if (mute != null) {
         	if(plugin.getBanManager().hasImmunity(p.getName())){
-        		return; 
+        		return;
         	}
         	if(mute instanceof TempMute){
         		TempMute tMute = (TempMute) mute;
@@ -41,8 +41,8 @@ public class HeroChatListener implements Listener{
         	else{
         		p.sendMessage(ChatColor.RED+"You're muted!");
         	}
-        	
-            e.setResult(Result.FAIL);
+
+            e.setResult(ChatResult.FAIL);
         }
 	}
 }
