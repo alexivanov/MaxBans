@@ -1,5 +1,5 @@
 name: MaxBans
-version: 2.0 #Release
+version: 3.0 #Release
 main: org.maxgamer.maxbans.MaxBans
 authors: [Darekfive, Netherfoam]
 
@@ -185,7 +185,7 @@ commands:
         usage: /rangeban <IP1-IP2> [Reason]
         aliases: [mbrangeban, rb]
     temprangeban:
-        description: 
+        description:
         usage: /temprangeban <IP1-IP2> <time> <timeform> [Reason]
         aliases: [mbtemprangeban, temprb]
     unrangeban:

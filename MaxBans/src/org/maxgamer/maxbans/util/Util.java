@@ -10,22 +10,22 @@ import org.bukkit.entity.Player;
 import org.maxgamer.maxbans.MaxBans;
 
 public class Util{
-	private static final String IP_REGEX = 
+	private static final String IP_REGEX =
 	        "^([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
 	        "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
 	        "([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\." +
 	        "([01]?\\d\\d?|2[0-4]\\d|25[0-5])$";
 	private static Pattern IP_PATTERN = Pattern.compile(IP_REGEX);
 	private static Pattern VALID_CHARS_PATTERN = Pattern.compile("[A-Za-z0-9_]");
-	
+
 	private static HashSet<String> yes = new HashSet<String>();
 	private static HashSet<String> no = new HashSet<String>();
-	
+
 	static{
 		yes.add("yes"); yes.add("true"); yes.add("on"); yes.add("enable");
 		no.add("no"); no.add("false"); no.add("off"); no.add("disable");
 	}
-	
+
 	/**
 	 * Returns true if the given string matches *.*.*.*
 	 * @param s The string which may or may not be an ip
@@ -35,7 +35,7 @@ public class Util{
 		return IP_PATTERN.matcher(s).matches();
 	}
 	/**
-	 * Returns a string containing all characters that aren't A-Z, a-z, 0-9 or _. 
+	 * Returns a string containing all characters that aren't A-Z, a-z, 0-9 or _.
 	 * Never returns a null string.
 	 * @param s The string to check
 	 * @return The string of invalid characters or an empty string if it is valid.
@@ -43,7 +43,7 @@ public class Util{
 	public static String getInvalidChars(String s){
 		return VALID_CHARS_PATTERN.matcher(s).replaceAll("");
 	}
-	
+
 	/**
 	 * Returns the short time, like Facebook. So
 	 * <br/><br/>
@@ -60,7 +60,7 @@ public class Util{
 		if(vals.length < 2) return s;
 		return vals[0] + " " + vals[1];
 	}
-	
+
 	/**
      * Finds the time until a specific epoch.
      * @param epoch the epoch (Milliseconds) time to check
@@ -68,10 +68,10 @@ public class Util{
      */
     public static String getTimeUntil(long epoch){
     	epoch -= System.currentTimeMillis();
-    	
+
     	return getTime(epoch);
     }
-    
+
     /**
      * Finds the time until a specific epoch.
      * @param epoch the epoch (Milliseconds) time to check
@@ -81,12 +81,12 @@ public class Util{
     public static String getTime(long ms){
     	ms =  (long) Math.ceil(ms / 1000.0); //Work in seconds.
     	StringBuilder sb = new StringBuilder(40);
-    	
+
     	if(ms / 31449600 > 0){
     		//Years
     		long years = ms / 31449600;
     		if(years > 100) return "Never";
-    		
+
     		sb.append(years + (years == 1 ? " year " : " years "));
     		ms -= years * 31449600;
     	}
@@ -108,26 +108,26 @@ public class Util{
     		sb.append(days + (days == 1 ? " day " : " days "));
     		ms -= days * 86400;
     	}
-    	
+
     	if(ms / 3600 > 0){
     		//Hours
     		long hours = ms / 3600;
     		sb.append(hours + (hours == 1 ? " hour " : " hours "));
     		ms -= hours * 3600;
     	}
-    	
+
     	if(ms / 60 > 0){
     		//Minutes
     		long minutes = ms / 60;
     		sb.append(minutes + (minutes == 1 ? " minute " : " minutes "));
     		ms -= minutes * 60;
     	}
-    	
+
     	if(ms > 0){
     		//Seconds
     		sb.append(ms + (ms == 1 ? " second " : " seconds "));
     	}
-    	
+
     	if(sb.length() > 1){
     		sb.replace(sb.length() - 1, sb.length(), "");
     	}
@@ -136,7 +136,7 @@ public class Util{
     	}
     	return sb.toString();
     }
-    
+
     /**
      * Convenience function for stripping -s arguments and returning true if its found
      * @param args The arguments from a command
@@ -158,17 +158,17 @@ public class Util{
 		}
 		return false;
 	}
-	
+
 	/**
 	 * Fetches the milliseconds from a time eg 4 mins = 240,000, or 6 seconds = 6,000
 	 * @param args The args from a command. Only args[1] (number) and args[2] are used.
-	 * @return The value 
+	 * @return The value
 	 */
 	public static long getTime(String[] args){
 		int modifier;
-		
+
 		String arg = args[2].toLowerCase();
-		
+
 		if(arg.startsWith("hour")){
 			modifier = 3600;
 		}
@@ -193,29 +193,29 @@ public class Util{
 		else{
 			modifier = 0;
 		}
-		
+
 		double time = 0;
 		try{
 			time = Double.parseDouble(args[1]);
 		}
 		catch(NumberFormatException e){
 		}
-		
+
 		//Shuffles down the array
 		for(int j = 0; j < args.length - 2; j++){
 			args[j] = args[j+2];
 		}
 		args[args.length - 1] = "";
 		args[args.length - 2] = "";
-		
+
 		return (long) (modifier * time) * 1000;
 	}
-	
+
 	/**
 	 * Builds a reason out of an array of args from a command
 	 * @param args The String[] parsed from the command
 	 * @return The String reason.
-	 * 
+	 *
 	 * Trims trailing spaces.
 	 */
 	public static String buildReason(String[] args){
@@ -227,14 +227,14 @@ public class Util{
 		//Trim off trailing spaces
 		String s = sb.toString().trim();
 		s = s.replaceAll("\\\\n", "\n");
-		
+
 		if(s.isEmpty()){
 			return MaxBans.instance.getBanManager().defaultReason;
 		}
-		
+
 		return ChatColor.translateAlternateColorCodes('&', s);
 	}
-	
+
 	/**
 	 * Converts the given user input string into a boolean.  Such as if a player enters "yes", "enable", "disable", it converts them to true, true, false respectively.
 	 * @param response The string the user has sent
@@ -247,7 +247,7 @@ public class Util{
 		if(no.contains(response)) return false;
 		throw new ParseException("Invalid boolean: " + response, 0);
 	}
-	
+
 	/**
 	 * Returns the name of the sender, whether it be the players name or "Console"
 	 * @param s The CommandSender
@@ -260,5 +260,9 @@ public class Util{
 		else{
 			return "Console";
 		}
+	}
+
+	public static long getSysTime() {
+		return System.currentTimeMillis() / 1000L;
 	}
 }

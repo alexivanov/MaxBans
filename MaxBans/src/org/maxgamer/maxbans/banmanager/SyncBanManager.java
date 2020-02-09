@@ -13,7 +13,7 @@ public class SyncBanManager extends BanManager{
 	public SyncBanManager(MaxBans plugin) {
 		super(plugin);
 	}
-	
+
 	/**
 	 * This method is invoked by the Syncer when it starts requesting the SyncBanManager to do things.
 	 * The stopSync() should be called after methods are run.
@@ -28,7 +28,7 @@ public class SyncBanManager extends BanManager{
 	public void stopSync(){
 		sync = true;
 	}
-	
+
 	//Who the fuck needs comments?
 	public void addHistory(String name, String banner, String message){
 		super.addHistory(name, banner, message);
@@ -37,7 +37,7 @@ public class SyncBanManager extends BanManager{
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	
+
 	public RangeBan ban(RangeBan rb){
 		RangeBan b = super.ban(rb);
 		if(sync){
@@ -63,17 +63,33 @@ public class SyncBanManager extends BanManager{
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	public void kick(String user, String msg){
-		super.kick(user, msg);
+	public void kick(String user, String msg, String reason, String banner) {
+		super.kick(user, msg, reason, banner);
 		if(sync){
-			Packet p = new Packet("kick").put("name", user).put("reason", msg);
+			Packet p = new Packet("kick").put("name", user).put("msg", msg);
+            if(reason != null) p.put("reason", reason);
+            if(banner != null) p.put("banner", banner);
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	public void kickIP(String ip, String msg){
-		super.kickIP(ip, msg);
-		if(sync){
-			Packet p = new Packet("kickip").put("ip", ip).put("reason", msg);
+
+	@Override
+	public void gkick(String user, String msg, boolean silent, String banner) {
+	    super.gkick(user, msg, silent, banner);
+		if(sync) {
+			Packet p = new Packet("gkick").put("name", user).put("reason", msg).put("banner", banner);
+			if(silent)
+				p.put("silent", "true");
+			super.plugin.getSyncer().broadcast(p);
+		}
+	}
+
+	public void kickIP(String ip, String msg, String reason, String banner) {
+		super.kickIP(ip, msg, reason, banner);
+		if(sync) {
+			Packet p = new Packet("kickip").put("ip", ip).put("msg", msg);
+            if(banner != null) p.put("banner", banner);
+            if(reason != null) p.put("reason", reason);
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
@@ -88,18 +104,31 @@ public class SyncBanManager extends BanManager{
 		}
 		return change;
 	}
-	
-	public void unban(String name){
-		super.unban(name);
+
+	public void unban(String name, String banner) {
+		unban(name, banner, false);
+	}
+
+	public void unban(String name, String banner, boolean isBan) {
+		super.unban(name, banner, isBan);
 		if(sync){
-			Packet p = new Packet("unban").put("name", name);
+			Packet p = new Packet("unban").put("name", name).put("banner", banner);
+			if(isBan)
+				p.put("ignore", "true");
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	public void unbanip(String ip){
-		super.unbanip(ip);
-		if(sync){
-			Packet p = new Packet("unbanip").put("ip", ip);
+
+	public void unbanip(String ip, String banner) {
+		unbanip(ip, banner, false);
+	}
+
+	public void unbanip(String ip, String banner, boolean isBan){
+		super.unbanip(ip, banner, isBan);
+		if(sync) {
+			Packet p = new Packet("unbanip").put("ip", ip).put("banner", banner);
+			if(isBan)
+				p.put("ignore", "true");
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
@@ -185,7 +214,7 @@ public class SyncBanManager extends BanManager{
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	
+
 	public boolean deleteWarning(String name, Warn warn){
 		if(super.deleteWarning(name, warn)){
 			//Success
@@ -198,7 +227,7 @@ public class SyncBanManager extends BanManager{
 		//Failure (Invalid warning)
 		return false;
 	}
-	
+
 	public void ban(String name, String reason, String banner){
 		super.ban(name, reason, banner);
 		if(sync){
@@ -206,7 +235,7 @@ public class SyncBanManager extends BanManager{
 			super.plugin.getSyncer().broadcast(p);
 		}
 	}
-	
+
 	@Override
 	public String toString(){
 		return "SyncBanManager:" + super.toString();

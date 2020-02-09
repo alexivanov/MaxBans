@@ -20,7 +20,7 @@ public class TempIPBanCommand extends CmdSkeleton{
 				sender.sendMessage(Msg.get("error.no-player-given"));
 				return true;
 			}
-			
+
 			//Get expirey time
 			long time = Util.getTime(args);
 			if(time <= 0){
@@ -28,11 +28,11 @@ public class TempIPBanCommand extends CmdSkeleton{
 				return true;
 			}
 			time += System.currentTimeMillis();
-			
+
 			//Build the reason
 			String reason = Util.buildReason(args);
 			String banner = Util.getName(sender);
-			
+
 			String ip;
 			if(!Util.isIP(name)){
 				name = plugin.getBanManager().match(name);
@@ -41,25 +41,25 @@ public class TempIPBanCommand extends CmdSkeleton{
 				}
 				//Fetch their IP address from history
 				ip = plugin.getBanManager().getIP(name);
-				
+
 				if(ip == null){
 					String msg = Msg.get("error.no-ip-known");
 					sender.sendMessage(msg);
 					return true;
 				}
-				
+
 				plugin.getBanManager().tempban(name, reason, banner, time); //User
 			}
 			else{
 				ip = name;
 			}
-			
+
 			//Make sure the ban isnt redundant
 			IPBan ban = plugin.getBanManager().getIPBan(ip);
 			if(ban != null){
 				if(ban instanceof TempIPBan){
 					//They're already tempbanned!
-					
+
 					TempIPBan tBan = (TempIPBan) ban;
 					if(tBan.getExpires() > time){
 						//Their old ban lasts longer than this one!
@@ -69,7 +69,7 @@ public class TempIPBanCommand extends CmdSkeleton{
 					}
 					else{
 						//Increasing a previous ban, remove the old one first.
-						plugin.getBanManager().unbanip(ip);
+						plugin.getBanManager().unbanip(ip, banner);
 					}
 				}
 				else{
@@ -80,12 +80,12 @@ public class TempIPBanCommand extends CmdSkeleton{
 					return true;
 				}
 			}
-			
+
 			//Ban them
 			plugin.getBanManager().tempipban(ip, reason, banner, time); //IP
 			String message = Msg.get("announcement.player-was-tempipbanned", new String[]{"banner", "name", "reason", "ip", "time"}, new String[]{banner, name, reason, ip, Util.getTimeUntil(time)});
 			plugin.getBanManager().announce(message, silent, sender);
-			
+
 			return true;
 		}
 		else{

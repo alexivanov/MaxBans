@@ -12,31 +12,34 @@ import org.maxgamer.maxbans.MaxBans;
 import org.maxgamer.maxbans.banmanager.RangeBan;
 import org.maxgamer.maxbans.banmanager.SyncBanManager;
 import org.maxgamer.maxbans.banmanager.Warn;
+import org.maxgamer.maxbans.events.PunishEvent;
 import org.maxgamer.maxbans.util.DNSBL.CacheRecord;
 import org.maxgamer.maxbans.util.DNSBL.DNSStatus;
 import org.maxgamer.maxbans.util.IPAddress;
 import org.maxgamer.maxbans.util.InputStreamWrapper;
 import org.maxgamer.maxbans.util.OutputStreamWrapper;
+import org.maxgamer.maxbans.util.Util;
 
 public class ClientToServerConnection{
 	/** Number of milliseconds to wait after a failed connection (Not auth!)*/
 	public static final int CONNECT_FAIL_DELAY = 5000;
-	
+
 	/** True if we should reconnect, false otherwise */
 	private boolean reconnect = true;
-	
+
 	private String host;
 	private int port;
 	private String pass;
-	
+
 	/** The map of string to commands to be executed which use packets */
 	private HashMap<String, Command> commands = new HashMap<String, Command>();
-	
+	private HashMap<String, String> historyCommands = new HashMap<>();
+
 	/** The socket connection to the remote server */
 	private Socket socket;
-	
+
 	private LinkedList<Packet> queue = new LinkedList<Packet>();
-	
+
 	public ClientToServerConnection(String host, int port, String pass){
 		this.host = host;
 		this.port = port;
@@ -53,7 +56,7 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("msg", msg);
-		
+
 		/* *************************
 		 * Announces the given message
 		 * to everyone in the server
@@ -63,12 +66,12 @@ public class ClientToServerConnection{
 			public void run(Packet prop){
 				String msg = prop.get("string");
 				boolean silent = prop.has("silent");
-				
+
 				MaxBans.instance.getBanManager().announce(msg, silent, null);
 			}
 		};
 		commands.put("announce", announce);
-		
+
 		/* *************************
 		 * Removes a players latest
 		 * warning.
@@ -83,7 +86,7 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("unwarn", unwarn);
-		
+
 		/* *************************
 		 * Logs that a player joined
 		 * from the given IP address
@@ -97,7 +100,7 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("setip", setip);
-		
+
 		/* *************************
 		 * Logs a players lowercase
 		 * name VS actual case name
@@ -110,17 +113,17 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("setname", setname);
-		
+
 		/* *************************
 		 * Logs that a given IP has
-		 * a given status with the 
+		 * a given status with the
 		 * DNSBL servers.
 		 * *************************/
 		Command dnsbl = new Command(){
 			@Override
 			public void run(Packet prop){
 				if(MaxBans.instance.getBanManager().getDNSBL() == null) return;
-				
+
 				String ip = prop.get("ip");
 				DNSStatus status = DNSStatus.valueOf(prop.get("status"));
 				long created = Long.parseLong(prop.get("created"));
@@ -129,7 +132,7 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("dnsbl", dnsbl);
-		
+
 		/* *************************
 		 * Syncs a ban
 		 * *************************/
@@ -139,12 +142,15 @@ public class ClientToServerConnection{
 				String name = props.get("name");
 				String banner = props.get("banner");
 				String reason = props.get("reason");
-				
+
 				MaxBans.instance.getBanManager().ban(name, reason, banner);
+                PunishEvent event = new PunishEvent("Ban", banner, reason, Util.getSysTime()).setName(name);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("ban", ban);
-		
+        historyCommands.put("ban", "Ban");
+
 		/* *************************
 		 * Syncs an IP Ban
 		 * *************************/
@@ -154,12 +160,15 @@ public class ClientToServerConnection{
 				String ip = props.get("ip");
 				String banner = props.get("banner");
 				String reason = props.get("reason");
-				
+
 				MaxBans.instance.getBanManager().ipban(ip, reason, banner);
+                PunishEvent event = new PunishEvent("IP ban", banner, reason, Util.getSysTime()).setIp(ip);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("ipban", ipban);
-		
+        historyCommands.put("ipban", "IP ban");
+
 		/* *************************
 		 * Syncs a Temp IP Ban
 		 * *************************/
@@ -170,12 +179,15 @@ public class ClientToServerConnection{
 				String banner = props.get("banner");
 				String reason = props.get("reason");
 				long expires = Long.parseLong(props.get("expires"));
-				
+
 				MaxBans.instance.getBanManager().tempipban(ip, reason, banner, expires);
+                PunishEvent event = new PunishEvent("Temporary IP ban", banner, reason, Util.getSysTime()).setIp(ip).setExpire(expires);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("tempipban", tempipban);
-		
+        historyCommands.put("tempipban", "Temporary IP ban");
+
 		/* *************************
 		 * Syncs a Temp Ban
 		 * *************************/
@@ -186,25 +198,34 @@ public class ClientToServerConnection{
 				String banner = props.get("banner");
 				String reason = props.get("reason");
 				long expires = Long.parseLong(props.get("expires"));
-				
+
 				MaxBans.instance.getBanManager().tempban(name, reason, banner, expires);
+                PunishEvent event = new PunishEvent("Temporary ban", banner, reason, Util.getSysTime()).setName(name).setExpire(expires);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("tempban", tempban);
-		
+        historyCommands.put("tempban", "Temporary ban");
+
 		/* *************************
 		 * Syncs an unban
 		 * *************************/
 		Command unban = new Command(){
 			@Override
-			public void run(Packet props){
+			public void run(Packet props) {
 				String name = props.get("name");
-				MaxBans.instance.getBanManager().unban(name);
+				String banner = props.has("banner") ? props.get("banner") : "null";
+				MaxBans.instance.getBanManager().unban(name, banner);
+				boolean ignore = props.has("ignore");
+				if (!ignore) {
+					PunishEvent event = new PunishEvent("Unban", banner, null, Util.getSysTime()).setName(name);
+					Bukkit.getServer().getPluginManager().callEvent(event);
+				}
 			}
 		};
-		
 		commands.put("unban", unban);
-		
+        historyCommands.put("unban", "Unban");
+
 		/* *************************
 		 * Syncs unbanning an IP
 		 * *************************/
@@ -212,13 +233,19 @@ public class ClientToServerConnection{
 			@Override
 			public void run(Packet props){
 				String ip = props.get("ip");
-				MaxBans.instance.getBanManager().unbanip(ip);
+                String banner = props.has("banner") ? props.get("banner") : "null";
+				boolean ignore = props.has("ignore");
+				MaxBans.instance.getBanManager().unbanip(ip, banner);
+                if(!ignore) {
+					PunishEvent event = new PunishEvent("Unban IP", banner, null, Util.getSysTime()).setIp(ip);
+					Bukkit.getServer().getPluginManager().callEvent(event);
+				}
 			}
 		};
-		
 		commands.put("unbanip", unbanip);
-		
-		
+        historyCommands.put("unbanip", "Unban IP");
+
+
 		/* *************************
 		 * Syncs a mute
 		 * *************************/
@@ -228,13 +255,16 @@ public class ClientToServerConnection{
 				String name = props.get("name");
 				String banner = props.get("banner");
 				String reason = props.get("reason");
-				
+
 				MaxBans.instance.getBanManager().mute(name, banner, reason);
+                PunishEvent event = new PunishEvent("Mute", banner, reason, Util.getSysTime()).setName(name);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
-		
+
 		commands.put("mute", mute);
-		
+        historyCommands.put("mute", "Mute");
+
 		/* *************************
 		 * Syncs a Temp Mute
 		 * *************************/
@@ -245,12 +275,15 @@ public class ClientToServerConnection{
 				String banner = props.get("banner");
 				String reason = props.get("reason");
 				long expires = Long.parseLong(props.get("expires"));
-				
+
 				MaxBans.instance.getBanManager().tempmute(name, banner, reason, expires);
+                PunishEvent event = new PunishEvent("Temp mute", banner, reason, Util.getSysTime()).setName(name).setExpire(expires);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("tempmute", tempmute);
-		
+        historyCommands.put("tempmute", "Temp mute");
+
 		/* *************************
 		 * Syncs an unmute
 		 * *************************/
@@ -261,9 +294,9 @@ public class ClientToServerConnection{
 				MaxBans.instance.getBanManager().unmute(name);
 			}
 		};
-		
+
 		commands.put("unmute", unmute);
-		
+
 		/* *************************
 		 * Syncs a warning
 		 * *************************/
@@ -273,12 +306,15 @@ public class ClientToServerConnection{
 				String name = props.get("name");
 				String banner = props.get("banner");
 				String reason = props.get("reason");
-				
+
 				MaxBans.instance.getBanManager().warn(name, reason, banner);
+                PunishEvent event = new PunishEvent("Warning", banner, reason, Util.getSysTime()).setName(name);
+                Bukkit.getServer().getPluginManager().callEvent(event);
 			}
 		};
 		commands.put("warn", warn);
-		
+        historyCommands.put("warn", "Warning");
+
 		/* *************************
 		 * Clears a players warnings.
 		 * *************************/
@@ -286,12 +322,12 @@ public class ClientToServerConnection{
 			@Override
 			public void run(Packet props){
 				String name = props.get("name");
-				
+
 				MaxBans.instance.getBanManager().clearWarnings(name);
 			}
 		};
 		commands.put("clearwarnings", clearwarnings);
-		
+
 		/* *************************
 		 * Adds the given message to
 		 * the message history.
@@ -306,7 +342,7 @@ public class ClientToServerConnection{
 			}
 		};
 		commands.put("addhistory", addhistory);
-		
+
 		/* *************************
          * Adds the given rangeban
          * *************************/
@@ -318,7 +354,7 @@ public class ClientToServerConnection{
                         String end = props.get("end");
                         String banner = props.get("banner");
                         long created = Long.parseLong(props.get("created"));
-                        
+
                         IPAddress ip1 = new IPAddress(start);
                         IPAddress ip2 = new IPAddress(end);
                         RangeBan rb = new RangeBan(banner, reason, created, ip1, ip2);
@@ -326,7 +362,7 @@ public class ClientToServerConnection{
                 }
         };
         commands.put("rangeban", rangeban);
-        
+
         /* *************************
          * Removes the given rangeban
          * *************************/
@@ -335,7 +371,7 @@ public class ClientToServerConnection{
                 public void run(Packet props){
                         String start = props.get("start");
                         String end = props.get("end");
-                        
+
                         IPAddress ip1 = new IPAddress(start);
                         IPAddress ip2 = new IPAddress(end);
                         RangeBan rb = new RangeBan("", "", -1, ip1, ip2);
@@ -343,7 +379,7 @@ public class ClientToServerConnection{
                 }
         };
         commands.put("unrangeban", unrangeban);
-        
+
         /* *************************
          * Whitelist or unwhitelists the given user
          * *************************/
@@ -352,12 +388,12 @@ public class ClientToServerConnection{
                 public void run(Packet props){
                         String name = props.get("name");
                         boolean white = props.has("white");
-                        
+
                         MaxBans.instance.getBanManager().setWhitelisted(name, white);
                 }
         };
         commands.put("whitelist", whitelist);
-        
+
         /* *************************
          * Kicks anyone with the given username
          * *************************/
@@ -365,13 +401,30 @@ public class ClientToServerConnection{
                 @Override
                 public void run(Packet props){
                         String name = props.get("name");
-                        String reason = props.get("reason");
-                        
-                        MaxBans.instance.getBanManager().kick(name, reason);
+                        String msg = props.get("msg");
+                        String reason = props.has("reason") ? props.get("reason") : null;
+                        String banner = props.has("banner") ? props.get("banner") : null;
+
+                        MaxBans.instance.getBanManager().kick(name, msg, reason, banner);
                 }
         };
         commands.put("kick", kick);
-        
+        historyCommands.put("kick", "Kick");
+
+        Command gkick = new Command(){
+            @Override
+            public void run(Packet props){
+                String name = props.get("name");
+                String reason = props.get("reason");
+                boolean silent = props.has("silent");
+                String banner = props.get("banner");
+
+                MaxBans.instance.getBanManager().gkick(name, reason, silent, banner);
+            }
+        };
+        commands.put("gkick", gkick);
+        historyCommands.put("gkick", "Kick");
+
         /* *************************
          * Kicks anyone with the given IP Address
          * *************************/
@@ -379,13 +432,15 @@ public class ClientToServerConnection{
                 @Override
                 public void run(Packet props){
                         String ip = props.get("ip");
-                        String reason = props.get("reason");
-                        
-                        MaxBans.instance.getBanManager().kickIP(ip, reason);
+                        String msg = props.get("msg");
+                        String reason = props.has("reason") ? props.get("reason") : null;
+                        String banner = props.has("banner") ? props.get("banner") : null;
+
+                        MaxBans.instance.getBanManager().kickIP(ip, msg, reason, banner);
                 }
         };
         commands.put("kickip", kickip);
-        
+
         /* *************************
          * Kicks anyone with the given IP Address
          * *************************/
@@ -394,22 +449,22 @@ public class ClientToServerConnection{
                 public void run(Packet props){
                         String name = props.get("name");
                         boolean immune = props.has("immune");
-                        
+
                         MaxBans.instance.getBanManager().setImmunity(name, immune);
                 }
         };
         commands.put("setimmunity", setimmunity);
 	}
-	
+
 	private InputStreamWrapper in;
 	private OutputStreamWrapper out;
-	
+
 	public void start(){
 		if(SyncUtil.isDebug()) log("Starting network listener.");
 		watcher.setDaemon(true);
 		watcher.start();
 	}
-	
+
 	/** The thread that:
 	 * 1. Makes the connection until successful
 	 * 2. Sends queued data, if any
@@ -431,13 +486,13 @@ public class ClientToServerConnection{
 						socket.close();
 					} catch (IOException e) {}
 				}
-				
+
 				//Start our new connection
 				try {
 					socket = new Socket(host, port);
 					in = new InputStreamWrapper(socket.getInputStream());
 					out = new OutputStreamWrapper(socket.getOutputStream());
-					
+
 					Packet p = new Packet("connect").put("pass", pass);
 					write(p);
 					//Wait for a response
@@ -452,7 +507,7 @@ public class ClientToServerConnection{
 					if(SyncUtil.isDebug()) log("Connection failed (UnknownHostException), retrying."); //DEBUG
 					try { Thread.sleep(CONNECT_FAIL_DELAY);
 					} catch (InterruptedException e) {}
-					
+
 					continue; //Retry
 				} catch (IOException e1) {
 					if(SyncUtil.isDebug()) log("Connection failed (IOException), retrying."); //DEBUG
@@ -460,7 +515,7 @@ public class ClientToServerConnection{
 					} catch (InterruptedException e) {}
 					continue; //Retry.
 				}
-				
+
 				//Purge the queue.
 				synchronized(queue){
 					for(Packet p : queue){
@@ -468,8 +523,8 @@ public class ClientToServerConnection{
 					}
 					queue.clear();
 				}
-				
-				
+
+
 				//We can now read!
 				try {
 					Packet p;
@@ -484,15 +539,15 @@ public class ClientToServerConnection{
 							log("Malformed packet: " + data);
 							continue; //Next input.
 						}
-						
+
 						try{
 							Command c = commands.get(p.getCommand());
-							
+
 							if(c == null){
 								log("Unrecognised command: '" + p.getCommand() + "'... Is this version of MaxBans up to date?");
 								continue; //Skip.
 							}
-							
+
 							SyncBanManager sbm = (SyncBanManager) MaxBans.instance.getBanManager();
 							sbm.startSync();
 							c.run(p);
@@ -510,7 +565,7 @@ public class ClientToServerConnection{
 			}
 		}
 	};
-	
+
 	public void write(Packet p){
 		if(SyncUtil.isDebug()) log("Writing packet: " + p.serialize());
 		try{
@@ -526,27 +581,27 @@ public class ClientToServerConnection{
 			}
 		}
 	}
-	
+
 	public boolean isReconnect(){
 		return reconnect;
 	}
 	public void setReconnect(boolean reconnect){
 		this.reconnect = reconnect;
 	}
-	
+
 	public void close(){
 		setReconnect(false);
 		log("Closing connection!");
 		try{socket.close();}
 		catch(IOException e){}
 	}
-	
+
 	/** Represents a command the syncer can perform */
 	protected static abstract class Command{
 		/** Called when this command is asked for, with the packet that requested it. This method is called in the main server thread. */
 		public abstract void run(Packet packet);
 	}
-	
+
 	/**
 	 * Logs the given string to System.out
 	 * @param s The string to log.
@@ -554,5 +609,8 @@ public class ClientToServerConnection{
 	public static void log(String s){
 		Bukkit.getConsoleSender().sendMessage("[MaxBans-Syncer] " + s);
 	}
-	
+
+    public HashMap<String, String> getHistoryCommands() {
+        return historyCommands;
+    }
 }

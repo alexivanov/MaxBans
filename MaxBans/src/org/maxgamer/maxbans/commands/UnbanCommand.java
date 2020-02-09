@@ -21,15 +21,15 @@ public class UnbanCommand extends CmdSkeleton{
 				sender.sendMessage(Msg.get("error.no-player-given"));
 				return true;
 			}
-			
+
 			if(Util.isIP(name)){
 				//They gave us an IP instead.
 				String ip = name; //For readabilities sake.
 				IPBan ipban = plugin.getBanManager().getIPBan(ip);
 
 				if(ipban != null){
-					plugin.getBanManager().unbanip(ip);
-					
+					plugin.getBanManager().unbanip(ip, banner);
+
 					String msg = Msg.get("announcement.player-was-unbanned", new String[]{"banner", "name"}, new String[]{banner, name});
 					plugin.getBanManager().announce(msg, silent, sender);
 					plugin.getBanManager().addHistory(name, banner, msg);
@@ -45,22 +45,22 @@ public class UnbanCommand extends CmdSkeleton{
 				//Assume it's a name they gave us.
 				name = plugin.getBanManager().match(name, true);
 				String ip = plugin.getBanManager().getIP(name);
-				
+
 				Ban ban = plugin.getBanManager().getBan(name);
 				IPBan ipban = plugin.getBanManager().getIPBan(ip);
-				
+
 				if(ipban == null && ban == null){
 					//sender.sendMessage(Formatter.primary + "Could not find a ban for " + Formatter.secondary + name + Formatter.primary + ".");
 					String msg = Msg.get("error.no-ban-found", "name", name);
 					sender.sendMessage(msg);
 					return true;
 				}
-				
+
 				if(ban != null){
-					plugin.getBanManager().unban(name);
+					plugin.getBanManager().unban(name, banner);
 				}
 				if(ipban != null){
-					plugin.getBanManager().unbanip(ip);
+					plugin.getBanManager().unbanip(ip, banner);
 				}
 				String message = Msg.get("announcement.player-was-unbanned", new String[]{"banner", "name"}, new String[]{banner, name});
 				plugin.getBanManager().announce(message, silent, sender);

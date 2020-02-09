@@ -26,29 +26,29 @@ public class TempBanCommand extends CmdSkeleton{
 				sender.sendMessage(Msg.get("error.no-player-given"));
 				return true;
 			}
-			
+
 			long expires = Util.getTime(args);
 			if(expires <= 0){
 				sender.sendMessage(getUsage());
 				return true;
 			}
 			expires += System.currentTimeMillis();
-			
+
 			String reason = Util.buildReason(args);
 			String banner = Util.getName(sender);
-			
+
 			if(Util.isIP(name) == false){
 				name = plugin.getBanManager().match(name);
 				if(name == null){
 					name = args[0]; //Use exact name then.
 				}
-				
+
 				Ban ban = plugin.getBanManager().getBan(name);
-				
+
 				if(ban != null){
 					if(ban instanceof TempBan){
 						//They're already tempbanned!
-						
+
 						TempBan tBan = (TempBan) ban;
 						if(tBan.getExpires() > expires){
 							//Their old ban lasts longer than this one!
@@ -58,7 +58,7 @@ public class TempBanCommand extends CmdSkeleton{
 						}
 						else{
 							//Increasing a previous ban, remove the old one first.
-							plugin.getBanManager().unban(name);
+							plugin.getBanManager().unban(name, banner);
 						}
 					}
 					else{
@@ -68,7 +68,7 @@ public class TempBanCommand extends CmdSkeleton{
 						return true;
 					}
 				}
-				
+
 				plugin.getBanManager().tempban(name, reason, banner, expires);
 			}
 			else{
@@ -85,17 +85,17 @@ public class TempBanCommand extends CmdSkeleton{
 						}
 						else{
 							//Increasing a previous ban, remove the old one first.
-							plugin.getBanManager().unbanip(ip);
+							plugin.getBanManager().unbanip(ip, banner);
 						}
 					}
 				}
 				plugin.getBanManager().tempipban(ip, reason, banner, expires);
 			}
-			
+
 			String message = Msg.get("announcement.player-was-tempbanned", new String[]{"banner", "name", "reason", "time"}, new String[]{banner, name, reason, Util.getTimeUntil(expires)});
 			plugin.getBanManager().announce(message, silent, sender);
 			plugin.getBanManager().addHistory(name, banner, message);
-			
+
 			return true;
 		}
 	}
