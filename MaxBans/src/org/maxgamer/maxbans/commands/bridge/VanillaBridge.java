@@ -2,6 +2,7 @@ package org.maxgamer.maxbans.commands.bridge;
 
 import java.util.Map.Entry;
 
+import org.bukkit.BanList;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.maxgamer.maxbans.MaxBans;
@@ -18,6 +19,7 @@ public class VanillaBridge implements Bridge{
 		
 		MaxBans plugin = MaxBans.instance;
 		//Import vanilla.
+		BanList banList = Bukkit.getBanList(BanList.Type.NAME);
 		for(Entry<String, Ban> entry : plugin.getBanManager().getBans().entrySet()){
 			if(entry.getValue() instanceof TempBan){
 				//So we skip it in good faith.
@@ -25,7 +27,9 @@ public class VanillaBridge implements Bridge{
 			}
 			
 			OfflinePlayer p = Bukkit.getOfflinePlayer(entry.getKey());
-			if(!p.isBanned()) p.setBanned(true);
+			if(!p.isBanned()) {
+				banList.addBan(entry.getKey(), entry.getValue().getReason(), null, "MaxBans");
+			}
 		}
 		
 		for(Entry<String, IPBan> entry : plugin.getBanManager().getIPBans().entrySet()){

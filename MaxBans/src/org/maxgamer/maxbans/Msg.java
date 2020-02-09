@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -17,9 +18,8 @@ public class Msg{
 		File f = new File(MaxBans.instance.getDataFolder(), "messages.yml");
 		cfg = new YamlConfiguration();
 		try{
-			YamlConfiguration defaults = new YamlConfiguration();
 			InputStream in = MaxBans.instance.getResource("messages.yml");
-			defaults.load(in);
+			YamlConfiguration defaults = YamlConfiguration.loadConfiguration(new InputStreamReader(in));
 			in.close();
 			
 			if(f.exists()){
@@ -45,7 +45,7 @@ public class Msg{
 			e.printStackTrace();
 			System.out.println("Invalid messages.yml config. Using defaults.");
 			try {
-				cfg.load(MaxBans.instance.getResource("messages.yml"));
+				cfg.load(new InputStreamReader(MaxBans.instance.getResource("messages.yml")));
 			} catch (Exception ex){
 				ex.printStackTrace();
 			}
